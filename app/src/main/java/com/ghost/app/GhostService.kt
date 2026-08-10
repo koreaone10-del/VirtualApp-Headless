@@ -1,4 +1,3 @@
-```kotlin
 package com.ghost.app
 
 import android.app.*
@@ -109,4 +108,3 @@ class GhostService : Service() {
             .build()
     }
 }
-```
