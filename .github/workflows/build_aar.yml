@@ -8,33 +8,59 @@ jobs:
     runs-on: ubuntu-20.04
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository (empty, just for workflow)
+        uses: actions/checkout@v4
 
-      - name: Unzip and prepare source
+      - name: Unzip source code
         run: |
           unzip virtualapp-source.zip -d ./source
-          cp -r ./source/*/*/* . 2>/dev/null || cp -r ./source/*/* . 2>/dev/null || cp -r ./source/* .
+          # إظهار هيكل الملفات لمعرفة مكان الملفات الحقيقي
+          echo "===== Directory structure ====="
+          ls -R ./source
+          echo "=============================="
+          # نسخ كل المحتوى من أعمق مجلد إلى الجذر
+          shopt -s dotglob
+          DEEPEST=$(find ./source -type d -links 2 | head -1)
+          if [ -n "$DEEPEST" ]; then
+            cp -r "$DEEPEST"/* .
+          else
+            cp -r ./source/*/*/* . 2>/dev/null || cp -r ./source/*/* . 2>/dev/null || cp -r ./source/* .
+          fi
           rm -rf ./source virtualapp-source.zip
-          # تحديث إصدار Gradle إلى 6.9 لدعم Java 11
-          sed -i 's/gradle-4.1-all.zip/gradle-6.9-all.zip/g' gradle/wrapper/gradle-wrapper.properties
-          # إظهار الهيكل للتأكد
-          ls -la
+
+      - name: Overwrite gradle-wrapper.properties with Gradle 6.9
+        run: |
+          # إنشاء مجلد gradle/wrapper إن لم يوجد
+          mkdir -p gradle/wrapper
+          # كتابة ملف gradle-wrapper.properties جديد تماماً يستخدم Gradle 6.9 bin
+          cat > gradle/wrapper/gradle-wrapper.properties <<EOF
+          distributionBase=GRADLE_USER_HOME
+          distributionPath=wrapper/dists
+          distributionUrl=https\://services.gradle.org/distributions/gradle-6.9-bin.zip
+          zipStoreBase=GRADLE_USER_HOME
+          zipStorePath=wrapper/dists
+          EOF
+          echo "=== New gradle-wrapper.properties ==="
           cat gradle/wrapper/gradle-wrapper.properties
 
-      - name: Set up JDK 11
+      - name: Set up JDK 8 (backup)
         uses: actions/setup-java@v4
         with:
-          java-version: '11'
+          java-version: '8'
           distribution: 'temurin'
 
-      - name: Verify Java version
-        run: java -version
+      - name: Verify Java
+        run: |
+          java -version
+          echo "JAVA_HOME=$JAVA_HOME"
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
       - name: Build AAR
         run: ./gradlew :lib:assembleRelease --no-daemon
+        env:
+          JAVA_HOME: ${{ env.JAVA_HOME }}
 
       - name: Upload AAR
         uses: actions/upload-artifact@v4
