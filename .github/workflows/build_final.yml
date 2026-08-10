@@ -1,0 +1,50 @@
+name: Final Build AAR
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Unzip source
+        run: |
+          unzip virtualapp-source.zip -d source
+          # انسخ محتويات أعمق مجلد (الذي يحتوي lib, build.gradle...)
+          DEEP=$(find source -type d -links 2 | head -1)
+          if [ -n "$DEEP" ]; then
+            cp -r "$DEEP"/* .
+          else
+            cp -r source/*/*/* . 2>/dev/null || cp -r source/*/* . 2>/dev/null || cp -r source/* .
+          fi
+          rm -rf source virtualapp-source.zip
+          # احذف أي gradlew قديم
+          rm -f gradlew gradlew.bat
+          rm -rf gradle/wrapper
+          echo "Project root:"
+          ls -la
+
+      - name: Set up JDK 8
+        uses: actions/setup-java@v4
+        with:
+          java-version: '8'
+          distribution: 'temurin'
+
+      - name: Build with Gradle 6.9
+        run: |
+          wget -q https://services.gradle.org/distributions/gradle-6.9-bin.zip
+          unzip -q gradle-6.9-bin.zip
+          export GRADLE_HOME=$PWD/gradle-6.9
+          export PATH=$GRADLE_HOME/bin:$PATH
+          gradle -v
+          gradle :lib:assembleRelease --no-daemon
+
+      - name: Upload AAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: virtualapp-aar
+          path: lib/build/outputs/aar/*.aar
