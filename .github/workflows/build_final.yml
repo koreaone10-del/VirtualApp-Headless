@@ -14,12 +14,10 @@ jobs:
       - name: Unzip source and prepare project
         run: |
           unzip -q virtualapp-source.zip -d source
-
           echo "=== Full directory tree ==="
           find source -maxdepth 4 -type d | sort
           echo "==========================="
 
-          # البحث عن المجلد الذي يحتوي على build.gradle و lib معاً
           PROJECT_DIR=$(find source -type d -exec test -e "{}/build.gradle" \; -exec test -d "{}/lib" \; -print -quit)
 
           if [ -z "$PROJECT_DIR" ]; then
@@ -28,19 +26,12 @@ jobs:
           fi
 
           echo "Found project directory: $PROJECT_DIR"
-
-          # نسخ جميع محتويات هذا المجلد إلى الجذر (بما فيها الملفات المخفية)
           shopt -s dotglob
           cp -r "$PROJECT_DIR"/* .
           shopt -u dotglob
-
-          # إزالة الملفات المؤقتة
           rm -rf source virtualapp-source.zip
-
-          # حذف gradlew القديم إن وجد
           rm -f gradlew gradlew.bat
           rm -rf gradle/wrapper
-
           echo "=== Root after copy ==="
           ls -la
 
@@ -50,13 +41,40 @@ jobs:
           java-version: '8'
           distribution: 'temurin'
 
+      - name: Set up Android SDK
+        run: |
+          # تنزيل أدوات SDK
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-7584222_latest.zip
+          mkdir -p android_sdk/cmdline-tools
+          unzip -q commandlinetools-linux-7584222_latest.zip -d android_sdk/cmdline-tools
+          mv android_sdk/cmdline-tools/cmdline-tools android_sdk/cmdline-tools/latest
+          export ANDROID_HOME=$PWD/android_sdk
+          export ANDROID_SDK_ROOT=$ANDROID_HOME
+          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
+
+          # قبول التراخيص
+          yes | sdkmanager --licenses > /dev/null 2>&1
+
+          # تثبيت المكونات المطلوبة (تستخدم VirtualApp غالباً SDK 25 و build-tools متوافقة)
+          sdkmanager "platforms;android-25" "build-tools;25.0.3" "platform-tools" > /dev/null 2>&1
+
+          echo "Android SDK installed."
+
       - name: Download and run Gradle 6.9
+        env:
+          ANDROID_HOME: ${{ github.workspace }}/android_sdk
+          ANDROID_SDK_ROOT: ${{ github.workspace }}/android_sdk
         run: |
           echo "Downloading Gradle 6.9..."
           wget -q https://services.gradle.org/distributions/gradle-6.9-bin.zip
           unzip -q gradle-6.9-bin.zip
           export GRADLE_HOME=$PWD/gradle-6.9
           export PATH=$GRADLE_HOME/bin:$PATH
+
+          # تأكيد وجود SDK
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          ls -l $ANDROID_HOME/platforms/
+
           gradle -v
           gradle :lib:assembleRelease --no-daemon
 
