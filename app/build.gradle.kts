@@ -1,4 +1,3 @@
-```kotlin
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -27,4 +26,3 @@ android {
 dependencies {
     implementation("androidx.core:core-ktx:1.12.0")
 }
-```
