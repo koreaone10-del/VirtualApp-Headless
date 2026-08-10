@@ -1,4 +1,4 @@
-name: Build VirtualApp AAR (Direct Gradle)
+name: Build VirtualApp AAR - Final
 
 on:
   workflow_dispatch:
@@ -8,13 +8,13 @@ jobs:
     runs-on: ubuntu-20.04
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Unzip source code
+      - name: Unzip source and remove old Gradle wrapper
         run: |
           unzip virtualapp-source.zip -d ./source
-          # نسخ كل شيء من أعمق مجلد (يحتوي على lib, app, build.gradle)
+          # إيجاد أعمق مجلد يحوي المشروع ونسخه
           shopt -s dotglob
           DEEPEST=$(find ./source -type d -links 2 | head -1)
           if [ -n "$DEEPEST" ]; then
@@ -23,7 +23,12 @@ jobs:
             cp -r ./source/*/*/* . 2>/dev/null || cp -r ./source/*/* . 2>/dev/null || cp -r ./source/* .
           fi
           rm -rf ./source virtualapp-source.zip
-          ls -la
+          
+          # حذف gradlew و gradle wrapper القديم
+          rm -f gradlew gradlew.bat
+          rm -rf gradle/wrapper
+          # التأكد من عدم وجودها
+          ls -la | grep gradle || echo "Old gradle wrapper removed successfully"
 
       - name: Set up JDK 8
         uses: actions/setup-java@v4
@@ -31,18 +36,16 @@ jobs:
           java-version: '8'
           distribution: 'temurin'
 
-      - name: Verify Java
-        run: java -version
-
-      - name: Download and run Gradle 6.9 directly
+      - name: Download Gradle 6.9 and build
         run: |
           wget -q https://services.gradle.org/distributions/gradle-6.9-bin.zip
-          unzip gradle-6.9-bin.zip
-          export PATH=$PWD/gradle-6.9/bin:$PATH
+          unzip -q gradle-6.9-bin.zip
+          export GRADLE_HOME=$PWD/gradle-6.9
+          export PATH=$GRADLE_HOME/bin:$PATH
           gradle -v
           gradle :lib:assembleRelease --no-daemon
 
-      - name: Upload AAR
+      - name: Upload AAR artifact
         uses: actions/upload-artifact@v4
         with:
           name: virtualapp-aar
