@@ -34,18 +34,39 @@ jobs:
           java-version: '8'
           distribution: 'temurin'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          packages: 'platforms;android-25 build-tools;25.0.3'
+      - name: Install Android SDK (JDK 8 compatible)
+        run: |
+          # تنزيل نسخة قديمة من أدوات SDK تدعم JDK 8
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-6200805_latest.zip
+          mkdir -p $HOME/android_sdk/cmdline-tools
+          unzip -q commandlinetools-linux-6200805_latest.zip -d $HOME/android_sdk/cmdline-tools
+          mv $HOME/android_sdk/cmdline-tools/cmdline-tools $HOME/android_sdk/cmdline-tools/latest
+          export ANDROID_HOME=$HOME/android_sdk
+          export ANDROID_SDK_ROOT=$ANDROID_HOME
+          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
+
+          # تجاوز فحص JDK
+          export SKIP_JDK_VERSION_CHECK=true
+
+          # قبول التراخيص
+          yes | sdkmanager --licenses > /dev/null 2>&1
+
+          # تثبيت المكونات المطلوبة
+          sdkmanager "platforms;android-25" "build-tools;25.0.3" > /dev/null 2>&1
+
+          echo "Android SDK installed successfully."
 
       - name: Build with Gradle 6.9
+        env:
+          ANDROID_HOME: ${{ github.workspace }}/android_sdk
+          ANDROID_SDK_ROOT: ${{ github.workspace }}/android_sdk
         run: |
-          echo "Downloading Gradle 6.9..."
+          # تثبيت Gradle 6.9
           wget -q https://services.gradle.org/distributions/gradle-6.9-bin.zip
           unzip -q gradle-6.9-bin.zip
           export GRADLE_HOME=$PWD/gradle-6.9
           export PATH=$GRADLE_HOME/bin:$PATH
+
           gradle -v
           gradle :lib:assembleRelease --no-daemon
 
