@@ -17,11 +17,14 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
-
-      - name: Build APK
-        run: ./gradlew :app:assembleDebug --no-daemon
+      - name: Download and run Gradle 8.2
+        run: |
+          wget -q https://services.gradle.org/distributions/gradle-8.2-bin.zip
+          unzip -q gradle-8.2-bin.zip
+          export GRADLE_HOME=$PWD/gradle-8.2
+          export PATH=$GRADLE_HOME/bin:$PATH
+          gradle -v
+          gradle :app:assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
