@@ -5,15 +5,15 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Unzip source
+      - name: Unzip source code
         run: |
-          unzip virtualapp-source.zip -d source
+          unzip -q virtualapp-source.zip -d source
           DEEP=$(find source -type d -links 2 | head -1)
           if [ -n "$DEEP" ]; then
             cp -r "$DEEP"/* .
@@ -23,7 +23,7 @@ jobs:
           rm -rf source virtualapp-source.zip
           rm -f gradlew gradlew.bat
           rm -rf gradle/wrapper
-          echo "Root files:"
+          echo "Project files:"
           ls -la
 
       - name: Set up JDK 8
@@ -32,7 +32,7 @@ jobs:
           java-version: '8'
           distribution: 'temurin'
 
-      - name: Build with Gradle 6.9
+      - name: Download and run Gradle 6.9
         run: |
           echo "Downloading Gradle 6.9..."
           wget -q https://services.gradle.org/distributions/gradle-6.9-bin.zip
