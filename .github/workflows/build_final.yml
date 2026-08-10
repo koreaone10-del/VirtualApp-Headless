@@ -11,23 +11,41 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Unzip source code
+      - name: Unzip source and prepare project
         run: |
           unzip -q virtualapp-source.zip -d source
-          DEEP=$(find source -type d -links 2 | head -1)
-          if [ -n "$DEEP" ]; then
-            cp -r "$DEEP"/* .
-          else
-            cp -r source/*/*/* . 2>/dev/null || cp -r source/*/* . 2>/dev/null || cp -r source/* .
+
+          echo "=== Full directory tree ==="
+          find source -maxdepth 4 -type d | sort
+          echo "==========================="
+
+          # البحث عن المجلد الذي يحتوي على build.gradle و lib معاً
+          PROJECT_DIR=$(find source -type d -exec test -e "{}/build.gradle" \; -exec test -d "{}/lib" \; -print -quit)
+
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "ERROR: Could not find project directory with build.gradle and lib"
+            exit 1
           fi
+
+          echo "Found project directory: $PROJECT_DIR"
+
+          # نسخ جميع محتويات هذا المجلد إلى الجذر (بما فيها الملفات المخفية)
+          shopt -s dotglob
+          cp -r "$PROJECT_DIR"/* .
+          shopt -u dotglob
+
+          # إزالة الملفات المؤقتة
           rm -rf source virtualapp-source.zip
+
+          # حذف gradlew القديم إن وجد
           rm -f gradlew gradlew.bat
           rm -rf gradle/wrapper
-          echo "Project files:"
+
+          echo "=== Root after copy ==="
           ls -la
 
       - name: Set up JDK 8
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '8'
           distribution: 'temurin'
