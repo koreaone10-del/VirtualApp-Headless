@@ -1,4 +1,3 @@
-```kotlin
 package com.ghost.app
 
 import android.content.Intent
@@ -23,4 +22,3 @@ class MainActivity : AppCompatActivity() {
         finish()
     }
 }
-```
